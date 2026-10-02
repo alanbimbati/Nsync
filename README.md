@@ -25,7 +25,7 @@ interface with an **Nsync** entry in the top bar. To keep it running from login:
 `systemctl --user enable --now nsync`. Remove it with `sudo apt remove nsync` (your data in
 `~/.config/nsync` is kept; delete it to start over).
 
-**Android** (7.0+): install `Nsync-<version>.apk` (or the smaller `…-arm64-v8a.apk` for most phones) from the [Releases page](https://github.com/alanbimbati/Nsync/releases). It is a fork of
+**Android** (6.0+): install `Nsync-<version>.apk` (or the smaller `…-arm64-v8a.apk` for most phones) from the [Releases page](https://github.com/alanbimbati/Nsync/releases). It is a fork of
 Syncthing-Fork, installed as `app.nsync`, next to the original; do not run both at once.
 
 Verify a download with `sha256sum -c SHA256SUMS`. The Android APKs are signed with a key whose SHA-256 fingerprint is

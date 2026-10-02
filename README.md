@@ -16,7 +16,7 @@ so it does not touch a Syncthing you already use.
 
 ## Install
 
-**Linux** (Ubuntu 20.04+, Debian 11+, Pop!_OS, Mint): download `nsync_<version>_amd64.deb` from `releases/`, then
+**Linux** (Ubuntu 20.04+, Debian 11+, Pop!_OS, Mint): download `nsync_<version>_amd64.deb` from the [Releases page](https://github.com/alanbimbati/Nsync/releases), then
 
     sudo apt install ./nsync_<version>_amd64.deb
 
@@ -25,10 +25,11 @@ interface with an **Nsync** entry in the top bar. To keep it running from login:
 `systemctl --user enable --now nsync`. Remove it with `sudo apt remove nsync` (your data in
 `~/.config/nsync` is kept; delete it to start over).
 
-**Android** (7.0+): install `Nsync-<version>.apk` from `releases/` (or from Zapstore). It is a fork of
+**Android** (7.0+): install `Nsync-<version>.apk` (or the smaller `…-arm64-v8a.apk` for most phones) from the [Releases page](https://github.com/alanbimbati/Nsync/releases). It is a fork of
 Syncthing-Fork, installed as `app.nsync`, next to the original; do not run both at once.
 
-Verify a download with `sha256sum -c SHA256SUMS`.
+Verify a download with `sha256sum -c SHA256SUMS`. The Android APKs are signed with a key whose SHA-256 fingerprint is
+`d487f6dbccdfbb72d1af0f09562713e4dcce68e7ca262bcc5f4d08f4b0ce5c11` (check with `apksigner verify --print-certs`).
 
 ## Pair two devices
 
@@ -52,15 +53,15 @@ shows for any device ID. "Announce my public IP address" (a switch in the panel)
 | Folder | What it is |
 |---|---|
 | `nsync-linux/` | The Linux app (Python): supervisor for the bundled core, web page, protocol spec, `.deb` packaging. |
-| `nsync-android/` | The Android app: a fork of Syncthing-Fork with Nsync built in. See its `NSYNC.md`. |
-| `releases/` | Installers. |
+| [`nsync-android`](https://github.com/alanbimbati/nsync-android) | The Android app, in its own repository (branch `nsync`): a fork of Syncthing-Fork with Nsync built in. |
+| `releases/` | `make-checksums.sh`; the installers themselves are on the Releases page. |
 | `assets/` | Logo and screenshots. |
 | `archive/` | An earlier Android companion app, kept for reference. |
 
 ## Build
 
 Linux: `cd nsync-linux && ./packaging/build-syncthing.sh && ./packaging/build-deb.sh` (Go and Docker needed).
-Android: see `nsync-android/NSYNC.md`.
+Android: see [`NSYNC.md`](https://github.com/alanbimbati/nsync-android/blob/nsync/NSYNC.md) in the Android repository.
 
 ## License
 

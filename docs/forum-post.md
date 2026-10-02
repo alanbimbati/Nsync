@@ -1,5 +1,5 @@
 <!-- Draft reply for https://forum.syncthing.net/t/nostr-for-peer-discovery-instead-of-dht/26616
-     To be posted from your own account. Replace [REPO URL]. Upload the screenshots from assets/screenshots/
+     To be posted from your own account. Upload the screenshots from assets/screenshots/
      with the editor's upload button (Discourse hosts them) and keep their order. Remove this comment. -->
 
 I read this thread with interest and ended up building a proof of concept: **Nsync**, Syncthing with peer discovery over Nostr relays. It is a standalone app (Linux, plus an Android fork of Syncthing-Fork) that bundles the unmodified Syncthing core and adds the Nostr layer beside it. I am not asking Syncthing to change; this is a third-party experiment that happens to answer some of the questions raised here.
@@ -21,7 +21,7 @@ I read this thread with interest and ended up building a proof of concept: **Nsy
 
 **Status.** Early. Two instances on one machine, with Syncthing's own discovery turned off, found each other through a relay and connected. The Android app runs on an emulator (QR pairing, settings); it has not been through real-world use yet. It does not do NAT traversal or hole punching.
 
-The protocol is short and written down in `PROTOCOL.md`; I would value feedback on it, especially from the maintainers' side. Code and builds: [REPO URL] (MPL-2.0).
+The protocol is short and written down in `PROTOCOL.md`; I would value feedback on it, especially from the maintainers' side. Code and builds: https://github.com/alanbimbati/Nsync (Linux app, protocol, installers) and https://github.com/alanbimbati/nsync-android (Android), MPL-2.0.
 
 <!-- Optional, your call: a line such as "Built with help from an AI coding assistant (Claude Code)." Some
      communities expect that to be disclosed. -->

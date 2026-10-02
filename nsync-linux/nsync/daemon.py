@@ -9,7 +9,7 @@ import time
 
 import segno
 
-from .config import Config, Peer, home
+from .config import DEFAULT_RELAYS, Config, Peer, home
 from .core import Core
 from .lan import lan_ipv4
 from .nostr import Event, Keypair, npub_to_hex
@@ -66,6 +66,30 @@ def valid_relay(url: str) -> bool:
         return False
 
 
+def valid_own_relay(url: str) -> bool:
+    """A relay the user adds. Same rules as a peer's, plus plain ws:// for this machine or a private
+    network, so Nsync can be tried against a relay of one's own."""
+    if valid_relay(url):
+        return True
+    from urllib.parse import urlsplit
+    try:
+        parts = urlsplit(url)
+        host = parts.hostname or ""
+        if parts.scheme != "ws" or parts.username or parts.password or len(url) > 200:
+            return False
+        parts.port
+        if host == "localhost":
+            return True
+        ip = ipaddress.ip_address(host)
+        return ip.is_loopback or ip.is_private
+    except ValueError:
+        return False
+
+
+MAX_OWN_RELAYS = 20
+HEARTBEAT_MINUTES = (5, 120)
+
+
 def build_relay_list(keys: Keypair, relays: list[str], now: int | None = None) -> Event:
     event = Event(kind=KIND_RELAYS, content="", created_at=now or int(time.time()),
                   tags=[["r", url] for url in relays])
@@ -100,6 +124,8 @@ class Daemon:
         self.peer_state: dict[str, dict] = {}  # pubkey hex -> last accepted addresses and time
         self.pool: RelayPool | None = None
         self.core: Core | None = None
+        self._force = False  # announce at the next check even if nothing changed and nothing is due
+        self.last_check_wall = 0  # when the address was last looked at, changed or not
         self._core_ready = not config.managed  # an external Syncthing is assumed to be up
 
     def handle_event(self, event: Event, now: int | None = None) -> bool:
@@ -207,9 +233,11 @@ class Daemon:
         if not addrs:
             log.warning("could not determine a public address, nothing to announce")
             return
-        due = time.monotonic() - self._announced_at >= self.config.heartbeat
+        self.last_check_wall = int(time.time())
+        due = self._force or time.monotonic() - self._announced_at >= self.config.heartbeat
         if addrs == self._announced and not due:
             return
+        self._force = False
         if addrs != self._announced:
             log.info("announcing %s", ", ".join(addrs))
         event = build_announcement(self.keys, self.syncthing.device_id(), addrs, self.config.heartbeat)
@@ -217,6 +245,76 @@ class Daemon:
         self._announced, self._announced_at = addrs, time.monotonic()
         self.announced_wall = int(time.time())
         await self.pool.publish(build_relay_list(self.keys, self.config.relays))
+
+    async def refresh_now(self) -> None:
+        """Announce now, and ask the relays again for what the peers published."""
+        self._force = True
+        await self.announce_if_needed()
+        if self.pool:
+            await self.pool.set_filters(self._filters())
+
+    async def add_relay(self, url: str) -> None:
+        url = url.strip()
+        if not valid_own_relay(url):
+            raise ValueError("a relay address looks like wss://relay.example.com")
+        if url in self.config.relays:
+            raise ValueError("that relay is already in the list")
+        if len(self.config.relays) >= MAX_OWN_RELAYS:
+            raise ValueError(f"at most {MAX_OWN_RELAYS} relays")
+        self.config.relays.append(url)
+        self.config.save()
+        await self._relays_changed()
+
+    async def remove_relay(self, url: str) -> None:
+        if url not in self.config.relays:
+            raise ValueError("not one of your relays")
+        if len(self.config.relays) == 1:
+            raise ValueError("keep at least one relay, or no device can find this one")
+        self.config.relays.remove(url)
+        self.config.save()
+        await self._relays_changed()
+
+    async def reset_relays(self) -> None:
+        self.config.relays = list(DEFAULT_RELAYS)
+        self.config.save()
+        await self._relays_changed()
+
+    async def _relays_changed(self) -> None:
+        # The relay list is part of what peers read, and a new relay should hear from us now.
+        if self.pool:
+            await self.pool.set_urls(self.effective_relays())
+            if self._core_ready:
+                self._force = True
+                await self.announce_if_needed()
+
+    async def set_settings(self, heartbeat_minutes: int | None = None, announce_public: bool | None = None) -> None:
+        if heartbeat_minutes is not None:
+            lo, hi = HEARTBEAT_MINUTES
+            if not lo <= heartbeat_minutes <= hi:
+                raise ValueError(f"between {lo} and {hi} minutes")
+            self.config.heartbeat = heartbeat_minutes * 60
+        if announce_public is not None:
+            self.config.announce_public = bool(announce_public)
+        self.config.save()
+        if announce_public is not None and self._core_ready:
+            self._force = True
+            await self.announce_if_needed()
+
+    def _relay_states(self) -> list[dict]:
+        return [{**r.status(), "own": r.url in self.config.relays} for r in (self.pool.relays if self.pool else [])]
+
+    def _schedule(self) -> dict:
+        nxt = self.announced_wall + self.config.heartbeat if self.announced_wall else None
+        return {"check_seconds": self.config.poll_interval, "republish_minutes": self.config.heartbeat // 60,
+                "last_check_at": self.last_check_wall, "announced_at": self.announced_wall, "next_republish_at": nxt}
+
+    def summary(self) -> dict:
+        """Cheap to compute (no call to the core): the strip on Syncthing's page polls this."""
+        relays = self._relay_states()
+        return {"core_ready": self._core_ready, "relays_total": len(relays),
+                "relays_connected": sum(r["connected"] for r in relays),
+                "relays_accepted": sum(1 for r in relays if r["accepted_at"] and r["accepted_at"] >= self.announced_wall - 5),
+                "peers": len(self.config.peers), "announced": self._announced, **self._schedule()}
 
     def _filters(self) -> list[dict]:
         authors = list(self._peers) or [self.keys.pubkey_hex]
@@ -253,8 +351,10 @@ class Daemon:
             "core_ready": self._core_ready,
             "announced": self._announced,
             "announced_at": self.announced_wall,
-            "relays": [{"url": r.url, "connected": r.connected, "learned": r.url not in self.config.relays}
-                       for r in (self.pool.relays if self.pool else [])],
+            "relays": self._relay_states(),
+            "schedule": self._schedule(),
+            "announce_public": self.config.announce_public,
+            "default_relays": DEFAULT_RELAYS,
             "peers": [
                 {"name": p.name, "npub": p.npub, "syncthing_id": p.syncthing_id,
                  **(self.peer_state.get(npub_to_hex(p.npub)) or {"addresses": [], "at": 0})}

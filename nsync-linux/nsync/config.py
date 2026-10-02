@@ -5,7 +5,10 @@ import os
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
-DEFAULT_RELAYS = ["wss://relay.damus.io", "wss://nos.lol", "wss://relay.primal.net"]
+# Public relays that, when tried, accepted both event kinds Nsync uses (30078 and 10002); many refuse them.
+DEFAULT_RELAYS = ["wss://relay.damus.io", "wss://nos.lol", "wss://relay.primal.net",
+                  "wss://relay.snort.social", "wss://nostr.mom", "wss://offchain.pub"]
+_OLD_DEFAULT_RELAYS = ["wss://relay.damus.io", "wss://nos.lol", "wss://relay.primal.net"]
 
 
 def home() -> Path:
@@ -50,6 +53,8 @@ class Config:
             return cls()
         raw = json.loads(path.read_text())
         raw["peers"] = [Peer(**p) for p in raw.get("peers", [])]
+        if raw.get("relays") == _OLD_DEFAULT_RELAYS:  # never changed by the user: take the new defaults
+            raw["relays"] = list(DEFAULT_RELAYS)
         return cls(**raw)
 
     def save(self) -> None:

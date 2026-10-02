@@ -13,10 +13,11 @@ I read this thread with interest and ended up building a proof of concept: **Nsy
 - **"Announce to all and query them all" (@calmh).** Yes, that is what it does, with a handful of relays; it is cheap at that scale.
 - **Trust.** Announcements are signed and expire (NIP-40); a peer only accepts one from the paired key, with the paired device ID, and Syncthing's TLS still authenticates the connection itself. A relay can drop or delay events, not forge them. It *can* read them: they are plaintext, so a relay sees the device's LAN and public IP and when it is online, under a key that exists only for that device. As far as I can tell that is no more than the global discovery servers already see for any device ID. I left encryption out for now; there is an option to announce the LAN address only.
 
-![The Nsync panel: pairing QR code, paired device and relays](upload://linux-panel-overlay.png)
+![The Nsync panel: pairing QR code, paired device and relays](upload://linux-panel.png)
 
 ![The Android app: Nsync pairing QR code in the device ID dialog, and the Nsync settings](upload://android-device-qr.png)
 ![](upload://android-settings.png)
+![](upload://android-relays.png)
 
 **Status.** Early. Two instances on one machine, with Syncthing's own discovery turned off, found each other through a relay and connected. The Android app runs on an emulator (QR pairing, settings); it has not been through real-world use yet. It does not do NAT traversal or hole punching.
 

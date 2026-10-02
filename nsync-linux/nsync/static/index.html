@@ -6,96 +6,172 @@
 <title>Nsync</title>
 <link rel="icon" href="/nsync/logo.svg" type="image/svg+xml">
 <style>
-  :root { --bg:#f4f6f8; --card:#fff; --fg:#1d2733; --muted:#64748b; --line:#e2e8f0; --accent:#0891d1; --ok:#2e9d57; --bad:#d64545; }
-  @media (prefers-color-scheme: dark) { :root { --bg:#10161d; --card:#18212b; --fg:#e6edf3; --muted:#8b9bb0; --line:#26323f; } }
+  :root { --bg:#f4f6f8; --card:#fff; --fg:#1d2733; --muted:#64748b; --line:#e2e8f0; --accent:#8e30eb; --ok:#2e9d57; --bad:#d64545; --soft:#f3e9fd; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#10161d; --card:#18212b; --fg:#e6edf3; --muted:#8b9bb0; --line:#26323f; --accent:#b073ff; --soft:#241a33; } }
   * { box-sizing: border-box; }
-  body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.5 system-ui, sans-serif; }
-  header { display:flex; align-items:center; gap:14px; padding:16px 24px; background:var(--card); border-bottom:1px solid var(--line); }
+  body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.55 system-ui, sans-serif; }
+  header { display:flex; align-items:center; gap:14px; padding:14px 24px; background:var(--card); border-bottom:1px solid var(--line); }
   header img { width:44px; height:44px; }
-  header h1 { margin:0; font-size:20px; }
-  main { max-width:880px; margin:0 auto; padding:20px 16px 48px; display:grid; gap:16px; }
+  header h1 { margin:0; font-size:22px; color:var(--accent); }
+  main { max-width:900px; margin:0 auto; padding:20px 16px 48px; display:grid; gap:16px; }
   section { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:16px 20px; }
   h2 { margin:0 0 10px; font-size:13px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); }
+  p { margin:8px 0; }
   code { font:13px ui-monospace, monospace; word-break:break-all; }
-  .row { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:8px 0; border-top:1px solid var(--line); }
+  .row { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:9px 0; border-top:1px solid var(--line); }
   .row:first-of-type { border-top:0; }
   .muted { color:var(--muted); font-size:13px; }
-  .dot { display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:8px; background:var(--bad); }
+  .dot { display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:8px; background:var(--bad); flex:none; }
   .dot.on { background:var(--ok); }
   button { font:inherit; border:1px solid var(--accent); background:var(--accent); color:#fff; border-radius:6px; padding:6px 14px; cursor:pointer; }
   button.ghost { background:transparent; color:var(--accent); }
-  input { font:inherit; padding:7px 10px; border:1px solid var(--line); border-radius:6px; background:var(--bg); color:var(--fg); width:100%; }
-  form { display:grid; gap:8px; margin-top:12px; }
-  #error { color:var(--bad); }
+  button:disabled { opacity:.5; cursor:default; }
+  input[type=text], input[type=number] { font:inherit; padding:7px 10px; border:1px solid var(--line); border-radius:6px; background:var(--bg); color:var(--fg); }
+  form, .inline { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-top:10px; }
+  form input[type=text] { flex:1 1 260px; }
+  .explain { background:var(--soft); border-left:4px solid var(--accent); }
+  .explain ol { margin:8px 0 8px 18px; padding:0; }
+  .explain li { margin:4px 0; }
+  .tag { font-size:11px; padding:1px 7px; border-radius:10px; border:1px solid var(--line); color:var(--muted); margin-left:6px; }
+  .ok { color:var(--ok); } .bad { color:var(--bad); }
+  .addr { display:block; }
+  #error { color:var(--bad); margin:0; }
+  summary { cursor:pointer; color:var(--accent); }
+  svg { max-width:100%; }
 </style>
 </head>
 <body>
-<header><img src="/nsync/logo.svg" alt=""><h1>Nsync</h1><span class="muted">Syncthing discovery over Nostr</span></header>
+<header><img src="/nsync/logo.svg" alt=""><h1>Nsync</h1><span class="muted">Syncthing, with your devices found through Nostr</span></header>
 <main>
   <p id="error"></p>
+
+  <section class="explain">
+    <h2>How your devices find each other</h2>
+    <p>Nsync is Syncthing with one addition: the way your devices locate each other.</p>
+    <ol>
+      <li>This device writes a short note, signed with a key that exists only for it: <i>“I am device X, reach me at these addresses.”</i></li>
+      <li>It publishes the note to the <b>Nostr relays</b> below: public servers that simply store such notes and hand them out.</li>
+      <li>Your paired devices read the note from the relays and <b>connect to you directly</b>. Your files never pass through the relays.</li>
+    </ol>
+    <p><b>Why the relays have to know your IP address.</b> For your other devices to connect to this one, they must learn where it is. That
+      address changes (another Wi-Fi, mobile data, your provider), so Nsync looks at it <b>every minute</b>, publishes again as soon as it
+      changes, and at least every <b id="hb">20</b> minutes; a note stops being valid if this device goes quiet.</p>
+    <details>
+      <summary>What exactly the relays can see</summary>
+      <p>The addresses in the note (your local and public IP and Syncthing's port), and when this device is online, under a key made for
+        this device alone. Not your files, not your folder names. The note is not encrypted: anyone who can read a relay can read it.
+        That is the same thing Syncthing's own discovery servers already learn about your device. If you would rather not share your
+        public IP, switch on <i>Local network only</i> below: then only devices on the same network can find this one this way.</p>
+    </details>
+  </section>
+
   <section>
     <h2>This device</h2>
-    <div class="row"><span>npub</span><code id="npub"></code></div>
+    <div class="row"><span>Nostr key (npub)</span><code id="npub"></code></div>
     <div class="row"><span>Syncthing ID</span><code id="sid"></code></div>
-    <div class="row"><span>Announced <span class="muted" id="annAt"></span></span><code id="ann"></code></div>
     <div class="row"><span class="muted">Pairing string, to paste on the other device</span><button class="ghost" id="copy">Copy</button></div>
     <div id="qr" style="text-align:center;margin-top:8px;background:#fff;padding:8px;border-radius:6px"></div>
     <p class="muted" style="text-align:center;margin:6px 0 0">Scan this with Nsync on another device</p>
   </section>
+
   <section>
-    <h2>Peers</h2>
+    <h2>Relays</h2>
+    <p id="sched"></p>
+    <div class="inline"><button id="refresh">Refresh now</button><span class="muted" id="refreshNote">Publishes this device's address again, right away, and asks the relays for your other devices' latest.</span></div>
+    <div id="relays" style="margin-top:12px"></div>
+    <form id="addForm">
+      <input type="text" id="relayUrl" placeholder="Add a relay: wss://relay.example.com" required>
+      <button>Add relay</button>
+    </form>
+    <div class="inline"><button class="ghost" id="reset">Restore the default relays</button><span class="muted" id="defaults"></span></div>
+    <div class="inline" style="margin-top:14px">
+      <label>Publish again at least every <input type="number" id="hbInput" min="5" max="120" style="width:80px"> minutes</label>
+      <button class="ghost" id="hbSave">Save</button>
+    </div>
+    <div class="inline"><label><input type="checkbox" id="pub"> Announce my public IP address</label>
+      <span class="muted">Turn off for “local network only”: other networks can no longer find this device.</span></div>
+  </section>
+
+  <section>
+    <h2>What the relays know about you right now</h2>
+    <div id="known" class="muted"></div>
+  </section>
+
+  <section>
+    <h2>Paired devices</h2>
     <div id="peers"></div>
     <form id="pairForm">
-      <input id="pairing" placeholder="Paste the other device's pairing string (npub…:XXXXXXX-…)" required>
-      <input id="name" placeholder="Name (optional)">
+      <input type="text" id="pairing" placeholder="Paste the other device's pairing string (npub…:XXXXXXX-…)" required>
+      <input type="text" id="name" placeholder="Name (optional)" style="flex:0 1 180px">
       <button>Pair</button>
     </form>
   </section>
-  <section><h2>Relays</h2><div id="relays"></div></section>
 </main>
 <script>
 const $ = id => document.getElementById(id);
 const ago = t => { if (!t) return "never"; const s = Math.max(0, Date.now()/1000 - t); return s < 90 ? "just now" : s < 5400 ? Math.round(s/60) + " min ago" : Math.round(s/3600) + " h ago"; };
-let pairingString = "";
+const inn = t => { const s = t - Date.now()/1000; return s <= 90 ? "within a minute" : s < 5400 ? "in " + Math.round(s/60) + " min" : "in " + Math.round(s/3600) + " h"; };
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+let pairingString = "", editing = false;
 
 async function api(path, body) {
-  const r = await fetch("/nsync" + path, body ? { method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body) } : {});
+  const r = await fetch("/nsync" + path, body !== undefined ? { method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body) } : {});
   const data = await r.json();
   if (!r.ok) throw new Error(data.error || r.status);
   return data;
 }
-
+const act = async (path, body) => { try { await api(path, body); $("error").textContent = ""; await refresh(); } catch (e) { $("error").textContent = e.message; } };
 function row(html) { const d = document.createElement("div"); d.className = "row"; d.innerHTML = html; return d; }
-const esc = s => s.replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+function relayRow(r) {
+  let state;
+  if (r.error) state = `<span class="bad">refused: ${esc(r.error)}</span>`;
+  else if (r.accepted_at) state = `<span class="ok">accepted your address ${ago(r.accepted_at)}</span>`;
+  else if (r.sent_at) state = `sent ${ago(r.sent_at)}, no answer yet`;
+  else state = r.connected ? "connected, nothing sent yet" : "not connected";
+  const el = row(`<span><span class="dot ${r.connected ? "on" : ""}"></span>${esc(r.url)}${r.own ? "" : '<span class="tag">from a paired device</span>'}<br><span class="muted">${r.connected ? "connected" : "offline"} · ${state}</span></span>`);
+  if (r.own) {
+    const b = document.createElement("button"); b.className = "ghost"; b.textContent = "Remove";
+    b.onclick = () => act("/api/relays", {remove: r.url}); el.appendChild(b);
+  }
+  return el;
+}
 
 async function refresh() {
   try {
     const s = await api("/api/status");
     $("error").textContent = "";
-    $("npub").textContent = s.npub;
-    $("sid").textContent = s.syncthing_id;
+    $("npub").textContent = s.npub; $("sid").textContent = s.syncthing_id;
     $("qr").innerHTML = s.qr_svg || "";
-    $("qr").querySelector("svg") && ($("qr").querySelector("svg").style.cssText = "width:220px;height:220px");
-    $("ann").textContent = s.announced.join("  ") || "nothing yet";
-    $("annAt").textContent = s.announced_at ? "(" + ago(s.announced_at) + ")" : "";
+    const svg = $("qr").querySelector("svg"); if (svg) svg.style.cssText = "width:220px;height:220px";
     pairingString = s.npub + ":" + s.syncthing_id;
-    $("relays").replaceChildren(...s.relays.map(r =>
-      row(`<span><span class="dot ${r.connected ? "on" : ""}"></span>${esc(r.url)}</span><span class="muted">${r.learned ? "from a peer · " : ""}${r.connected ? "connected" : "offline"}</span>`)));
+    const sc = s.schedule;
+    $("hb").textContent = sc.republish_minutes;
+    $("sched").innerHTML = `Last update published <b>${ago(sc.announced_at)}</b>` + (sc.announced_at ? `; next one ${inn(sc.next_republish_at)}, or sooner if your IP changes.` : ".") +
+      ` Your address is checked every ${sc.check_seconds} seconds.`;
+    $("relays").replaceChildren(...s.relays.map(relayRow));
+    $("defaults").textContent = "The default list has " + s.default_relays.length + " relays.";
+    if (document.activeElement !== $("hbInput")) $("hbInput").value = sc.republish_minutes;
+    if (document.activeElement !== $("pub")) $("pub").checked = s.announce_public;
+    $("known").innerHTML = s.announced.length
+      ? "Any relay operator can currently read these addresses for this device:" + s.announced.map(a => `<code class="addr">${esc(a)}</code>`).join("") +
+        (s.announce_public ? "" : "<p>Your public IP is not announced (local network only).</p>")
+      : "Nothing has been published yet.";
     $("peers").replaceChildren(...(s.peers.length ? s.peers.map(p => {
-      const el = row(`<span><b>${esc(p.name || "peer")}</b><br><span class="muted">${esc(p.addresses.join("  ") || "no announcement yet")}${p.at ? " · " + ago(p.at) : ""}</span></span>`);
+      const el = row(`<span><b>${esc(p.name || "peer")}</b><br><span class="muted">${esc(p.addresses.join("  ") || "no announcement read yet")}${p.at ? " · announced " + ago(p.at) : ""}</span></span>`);
       const b = document.createElement("button"); b.className = "ghost"; b.textContent = "Unpair";
-      b.onclick = async () => { try { await api("/api/unpair", {npub: p.npub}); refresh(); } catch (e) { $("error").textContent = e.message; } };
-      el.appendChild(b); return el;
-    }) : [row('<span class="muted">No peers yet</span>')]));
+      b.onclick = () => act("/api/unpair", {npub: p.npub}); el.appendChild(b); return el;
+    }) : [row('<span class="muted">No paired devices yet: paste another device\'s pairing string below, or scan its QR code.</span>')]));
   } catch (e) { $("error").textContent = e.message; }
 }
 
 $("copy").onclick = () => navigator.clipboard.writeText(pairingString);
-$("pairForm").onsubmit = async ev => {
-  ev.preventDefault();
-  try { await api("/api/pair", {pairing: $("pairing").value, name: $("name").value}); $("pairForm").reset(); refresh(); }
-  catch (e) { $("error").textContent = e.message; }
-};
+$("refresh").onclick = async function () { this.disabled = true; this.textContent = "Publishing…"; await act("/api/refresh", {}); this.textContent = "Refresh now"; this.disabled = false; };
+$("addForm").onsubmit = async ev => { ev.preventDefault(); await act("/api/relays", {add: $("relayUrl").value}); if (!$("error").textContent) $("addForm").reset(); };
+$("reset").onclick = () => act("/api/relays", {reset: true});
+$("hbSave").onclick = () => act("/api/settings", {heartbeat_minutes: parseInt($("hbInput").value, 10)});
+$("pub").onchange = () => act("/api/settings", {announce_public: $("pub").checked});
+$("pairForm").onsubmit = async ev => { ev.preventDefault(); await act("/api/pair", {pairing: $("pairing").value, name: $("name").value}); if (!$("error").textContent) $("pairForm").reset(); };
 refresh(); setInterval(refresh, 5000);
 </script>
 </body>

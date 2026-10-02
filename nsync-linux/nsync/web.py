@@ -67,7 +67,10 @@ def make_handler(daemon, loop: asyncio.AbstractEventLoop, port: int):
                 return self._json(502, {"error": f"Syncthing core is not answering yet: {exc}"})
             with r:
                 page = r.headers.get("Content-Type", "").startswith("text/html")
-                payload = r.content.replace(b"</body>", INJECT, 1) if page else None
+                payload = None
+                if page:
+                    # The window title is bound in Syncthing's template; "Nsync" instead of its name.
+                    payload = r.content.replace(b"' | Syncthing'", b"' | Nsync'").replace(b"</body>", INJECT, 1)
                 self.send_response(r.status_code)
                 for k, v in r.raw.headers.items():
                     if k.lower() in HOP_BY_HOP:
@@ -97,8 +100,14 @@ def make_handler(daemon, loop: asyncio.AbstractEventLoop, port: int):
                 self._send(200, _static("index.html"), "text/html; charset=utf-8")
             elif self.path == "/nsync/logo.svg":
                 self._send(200, _static("logo.svg"), "image/svg+xml")
+            elif upstream and self.path.split("?")[0] == "/assets/img/logo-horizontal.svg":
+                self._send(200, _static("brand.svg"), "image/svg+xml")  # Syncthing's own mark, replaced by ours
+            elif upstream and self.path.startswith("/assets/img/favicon-") and self.path.split("?")[0].endswith(".png"):
+                self._send(200, _static("favicon.png"), "image/png")
             elif self.path == "/nsync/inject.js":
                 self._send(200, _static("inject.js"), "application/javascript")
+            elif self.path == "/nsync/api/summary":
+                self._json(200, daemon.summary())
             elif self.path == "/nsync/api/status":
                 try:
                     self._json(200, daemon.status())
@@ -127,6 +136,17 @@ def make_handler(daemon, loop: asyncio.AbstractEventLoop, port: int):
                     coro = daemon.pair(body["pairing"], body.get("name", ""))
                 elif self.path == "/nsync/api/unpair":
                     coro = daemon.unpair(body["npub"])
+                elif self.path == "/nsync/api/refresh":
+                    coro = daemon.refresh_now()
+                elif self.path == "/nsync/api/relays":
+                    if body.get("reset"):
+                        coro = daemon.reset_relays()
+                    elif body.get("add"):
+                        coro = daemon.add_relay(str(body["add"]))
+                    else:
+                        coro = daemon.remove_relay(str(body["remove"]))
+                elif self.path == "/nsync/api/settings":
+                    coro = daemon.set_settings(body.get("heartbeat_minutes"), body.get("announce_public"))
                 else:
                     return self._json(404, {"error": "not found"})
                 asyncio.run_coroutine_threadsafe(coro, loop).result(timeout=15)

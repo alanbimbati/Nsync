@@ -12,7 +12,7 @@ so it does not touch a Syncthing you already use.
 
 ![Nsync on Linux](assets/screenshots/linux-gui.png)
 
-<p><img src="assets/screenshots/android-device-qr.png" width="240" alt="Pairing QR on Android"> <img src="assets/screenshots/android-settings.png" width="240" alt="Nsync settings on Android"></p>
+<p><img src="assets/screenshots/android-device-qr.png" width="240" alt="Pairing QR on Android"> <img src="assets/screenshots/android-settings.png" width="240" alt="How Nsync works, on Android"> <img src="assets/screenshots/android-relays.png" width="240" alt="Relays and their status on Android"></p>
 
 ## Install
 
@@ -45,7 +45,7 @@ See [`nsync-linux/PROTOCOL.md`](nsync-linux/PROTOCOL.md). In short, a device pub
 NIP-78 event with its addresses and a NIP-65 relay list; its paired peers read them. Announcements are
 **plaintext**: relays, and anyone reading them, see the device's LAN and public IP and when it is online,
 under a key that exists only for that device. That is no more than Syncthing's global discovery already
-shows for any device ID. `announce_public: false` (Linux) announces the LAN address only.
+shows for any device ID. "Announce my public IP address" (a switch in the panel) off announces the LAN address only.
 
 ## Layout
 

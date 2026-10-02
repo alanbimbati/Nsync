@@ -1,6 +1,6 @@
 [project]
 name = "nsync"
-version = "0.2.3"
+version = "0.3.0"
 description = "Syncthing peer discovery over Nostr relays"
 requires-python = ">=3.10"
 dependencies = ["coincurve>=19", "websockets>=12", "requests>=2.31", "segno>=1.6"]

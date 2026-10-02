@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3.0 (Linux) / Android
+
+- The Nsync name and logo replace Syncthing's in the top bar, the window title and the icon; a status strip on the
+  main page says when this device's address was last published, to how many relays, and when the next update is due.
+- The Nsync panel explains how discovery works, why the relays must know the IP address and what they can see, and
+  shows each relay with whether it accepted the last announcement. Relays can be added, removed or restored to the
+  defaults; "Refresh now" publishes again at once; the re-publish interval and "announce my public IP" are settings.
+- Six default relays (all tested to accept Nsync's events) instead of three; a list left unchanged is upgraded.
+- Android: the same on the Nsync settings screen (relay status, refresh now, restore defaults, public-IP switch).
+
 ## 0.2.3 (Linux) / first Android build
 
 - Linux: a standalone app. It bundles the Syncthing core (v2.1.6, static), runs it in its own home and serves

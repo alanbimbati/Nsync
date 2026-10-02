@@ -3,6 +3,7 @@
 import asyncio
 import json
 import logging
+import time
 from collections.abc import Callable
 
 import websockets
@@ -25,6 +26,23 @@ class Relay:
         # offline to never saw them: keep the newest of each kind and resend on every connect.
         self._latest: dict[int, Event] = dict(latest or {})
         self._task: asyncio.Task | None = None
+        # What this relay did with our announcements, for the page: when we sent one, when the relay
+        # said it accepted one, why it refused, and when it last gave us an event.
+        self.sent_at: float | None = None
+        self.accepted_at: float | None = None
+        self.error = ""
+        self.last_event_at: float | None = None
+        self._sent_ids: dict[str, int] = {}
+
+    def status(self) -> dict:
+        return {"url": self.url, "connected": self.connected, "sent_at": self.sent_at,
+                "accepted_at": self.accepted_at, "error": self.error, "last_event_at": self.last_event_at}
+
+    async def _send(self, ws, event: Event) -> None:
+        await ws.send(json.dumps(["EVENT", event.to_dict()]))
+        if event.kind == 30078:  # the announcement: the one that carries our address
+            self.sent_at = time.time()
+            self._sent_ids = {event.id: event.kind}
 
     def start(self) -> None:
         self._task = asyncio.create_task(self._run())
@@ -50,7 +68,7 @@ class Relay:
         self._latest[event.kind] = event
         if self._ws is not None:
             try:
-                await self._ws.send(json.dumps(["EVENT", event.to_dict()]))
+                await self._send(self._ws, event)
             except websockets.ConnectionClosed:
                 pass  # _run reconnects and resends _latest
 
@@ -62,7 +80,7 @@ class Relay:
                     log.info("connected to %s", self.url)
                     await ws.send(json.dumps(["REQ", "nsync", *self._filters]))
                     for event in self._latest.values():
-                        await ws.send(json.dumps(["EVENT", event.to_dict()]))
+                        await self._send(ws, event)
                     async for raw in ws:
                         self._handle(raw)
             except asyncio.CancelledError:
@@ -77,9 +95,16 @@ class Relay:
         try:
             msg = json.loads(raw)
             if msg[0] == "EVENT" and len(msg) >= 3:
+                self.last_event_at = time.time()
                 self._on_event(Event.from_dict(msg[2]))
-            elif msg[0] == "OK" and len(msg) >= 4 and not msg[2]:
-                log.warning("relay %s rejected event: %s", self.url, msg[3])
+            elif msg[0] == "OK" and len(msg) >= 4:
+                if msg[1] in self._sent_ids:
+                    if msg[2]:
+                        self.accepted_at, self.error = time.time(), ""
+                    else:
+                        self.error = str(msg[3])[:120]
+                if not msg[2]:
+                    log.warning("relay %s rejected event: %s", self.url, msg[3])
         except (ValueError, KeyError, IndexError, TypeError):
             log.debug("ignoring malformed message from %s", self.url)
 

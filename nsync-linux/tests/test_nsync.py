@@ -7,7 +7,7 @@ import pytest
 import websockets
 
 from nsync.config import Config, Peer
-from nsync.daemon import KIND, KIND_RELAYS, Daemon, build_announcement, build_relay_list, valid_address, valid_relay
+from nsync.daemon import KIND, KIND_RELAYS, Daemon, build_announcement, build_relay_list, valid_address, valid_own_relay, valid_relay
 from nsync.nostr import Event, Keypair, hex_to_npub, npub_to_hex
 from nsync.relay import RelayPool
 from nsync.stun import MAGIC, parse_binding_response
@@ -337,3 +337,110 @@ async def test_the_proxy_passes_the_cores_cookies_and_posts_through():
     finally:
         server.shutdown()
         core.shutdown()
+
+
+def test_there_are_at_least_five_default_relays_and_an_untouched_old_default_is_upgraded(tmp_path, monkeypatch):
+    from nsync.config import DEFAULT_RELAYS
+    assert len(DEFAULT_RELAYS) >= 5 and len(set(DEFAULT_RELAYS)) == len(DEFAULT_RELAYS)
+    assert all(valid_relay(u) for u in DEFAULT_RELAYS)
+    monkeypatch.setenv("NSYNC_HOME", str(tmp_path))
+    (tmp_path / "config.json").write_text(json.dumps({"relays": ["wss://relay.damus.io", "wss://nos.lol", "wss://relay.primal.net"]}))
+    assert Config.load().relays == DEFAULT_RELAYS          # the old three, never edited: new defaults
+    (tmp_path / "config.json").write_text(json.dumps({"relays": ["wss://mine.example.org"]}))
+    assert Config.load().relays == ["wss://mine.example.org"]  # a list the user chose is left alone
+
+
+@pytest.mark.parametrize("url,ok", [
+    ("wss://relay.example.com", True), ("ws://127.0.0.1:7777", True), ("ws://localhost:7777", True), ("ws://192.168.1.5:7777", True),
+    ("ws://relay.example.com", False), ("ws://8.8.8.8:7777", False), ("http://relay.example.com", False), ("relay.example.com", False),
+    ("wss://user:pw@relay.example.com", False),
+])
+def test_valid_own_relay(url, ok):
+    assert valid_own_relay(url) is ok
+
+
+class FakePool:
+    def __init__(self, urls):
+        self.urls, self.sent, self.filters = list(urls), [], 0
+        self.relays = []
+
+    async def publish(self, event):
+        self.sent.append(event.kind)
+
+    async def set_urls(self, urls):
+        self.urls = list(urls)
+
+    async def set_filters(self, filters):
+        self.filters += 1
+
+
+async def test_relay_actions_from_the_page(monkeypatch):
+    import requests
+
+    from nsync import daemon as dmod
+    from nsync.web import start_web
+
+    async def no_public_ip():
+        return None
+    monkeypatch.setattr(dmod, "public_ipv4", no_public_ip)
+    monkeypatch.setattr(dmod, "lan_ipv4", lambda: "192.168.1.9")
+    cfg = Config(peers=[], relays=["wss://a.example.com", "wss://b.example.com"], managed=False, announce_public=False)
+    cfg.save = lambda: None
+    d = Daemon(cfg, Keypair(os.urandom(32)), FakeSyncthing())
+    d.pool = FakePool(cfg.relays)
+    PORT = free_port()
+    server = start_web(d, PORT)
+    base = f"http://127.0.0.1:{PORT}/nsync/api"
+    post = lambda path, body: asyncio.to_thread(requests.post, base + path, json=body)
+    try:
+        r = await post("/relays", {"add": "wss://c.example.com"})
+        assert r.status_code == 200 and cfg.relays[-1] == "wss://c.example.com"
+        assert d.pool.urls[-1] == "wss://c.example.com" and KIND in d.pool.sent  # the newcomer hears from us at once
+        for bad, why in (({"add": "http://x.example.com"}, "wss://"), ({"add": "wss://c.example.com"}, "already"), ({"remove": "wss://nope.example.com"}, "not one")):
+            r = await post("/relays", bad)
+            assert r.status_code == 400 and why in r.json()["error"], (bad, r.text)
+        assert (await post("/relays", {"remove": "wss://a.example.com"})).status_code == 200
+        assert (await post("/relays", {"remove": "wss://b.example.com"})).status_code == 200
+        r = await post("/relays", {"remove": "wss://c.example.com"})  # the last one stays
+        assert r.status_code == 400 and "at least one" in r.json()["error"]
+        assert (await post("/relays", {"reset": True})).status_code == 200
+        from nsync.config import DEFAULT_RELAYS
+        assert cfg.relays == DEFAULT_RELAYS
+
+        assert (await post("/settings", {"heartbeat_minutes": 3})).status_code == 400
+        assert (await post("/settings", {"heartbeat_minutes": 30})).status_code == 200 and cfg.heartbeat == 1800
+        assert (await post("/settings", {"announce_public": True})).status_code == 200 and cfg.announce_public is True
+
+        before = d.pool.sent.count(KIND)
+        assert (await post("/refresh", {})).status_code == 200
+        assert d.pool.sent.count(KIND) == before + 1 and d.pool.filters >= 1   # published again, peers asked for again
+        summary = (await asyncio.to_thread(requests.get, base + "/summary")).json()
+        assert summary["republish_minutes"] == 30 and summary["announced"]
+    finally:
+        server.shutdown()
+
+
+async def test_a_relay_reports_whether_it_accepted_the_announcement():
+    async def handler(ws):
+        async for raw in ws:
+            m = json.loads(raw)
+            if m[0] == "EVENT":
+                refuse = m[1]["content"].startswith("refuse")
+                await ws.send(json.dumps(["OK", m[1]["id"], not refuse, "blocked: not allowed" if refuse else ""]))
+
+    from nsync.relay import Relay
+    async with websockets.serve(handler, "127.0.0.1", 0) as srv:
+        url = f"ws://127.0.0.1:{srv.sockets[0].getsockname()[1]}"
+        relay = Relay(url, [{"kinds": [KIND]}], lambda e: None)
+        relay.start()
+        await asyncio.sleep(0.3)
+        kp = Keypair(os.urandom(32))
+        assert relay.status()["accepted_at"] is None
+        await relay.publish(build_announcement(kp, PEER_ID, ["tcp://203.0.113.5:22000"], 1200))
+        await asyncio.sleep(0.4)
+        st = relay.status()
+        assert st["connected"] and st["sent_at"] and st["accepted_at"] and st["error"] == ""
+        await relay.publish(kp.sign(Event(kind=KIND, content="refuse", tags=[["d", "x"]])))
+        await asyncio.sleep(0.4)
+        assert relay.status()["error"] == "blocked: not allowed"
+        await relay.stop()

@@ -1,0 +1,21 @@
+[project]
+name = "nsync"
+version = "0.2.3"
+description = "Syncthing peer discovery over Nostr relays"
+requires-python = ">=3.10"
+dependencies = ["coincurve>=19", "websockets>=12", "requests>=2.31", "segno>=1.6"]
+
+[project.optional-dependencies]
+dev = ["pytest", "pytest-asyncio"]
+
+[project.scripts]
+nsync = "nsync.cli:main"
+
+[tool.setuptools]
+packages = ["nsync"]
+
+[tool.setuptools.package-data]
+nsync = ["static/*"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"

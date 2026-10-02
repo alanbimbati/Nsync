@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Nsync
+Comment=Syncthing discovery over Nostr relays
+Exec=nsync-launch
+Icon=nsync
+Terminal=false
+Categories=Network;FileTransfer;

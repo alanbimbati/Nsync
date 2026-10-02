@@ -1,0 +1,6 @@
+Nsync: Copyright (c) Alan Bimbati.
+
+This package bundles Syncthing (https://syncthing.net), unmodified, built from the
+v2.1.x sources at https://github.com/syncthing/syncthing. Syncthing is licensed under
+the Mozilla Public License 2.0 (https://www.mozilla.org/MPL/2.0/); its source code is
+available at the address above, and in the nsync-android submodule used to build it.

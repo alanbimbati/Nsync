@@ -1,0 +1,40 @@
+{
+  "secret_hex": "0101010101010101010101010101010101010101010101010101010101010101",
+  "npub": "npub1rwzv24nmzfjypx2a8m264ws9vht3uxp5vpypnluuzl67n4waq78suk0wul",
+  "event": {
+    "id": "04d7e93c6d20276400ac1fce7b11841ecb1ca878c87353a4f9b7b33a4283e178",
+    "pubkey": "1b84c5567b126440995d3ed5aaba0565d71e1834604819ff9c17f5e9d5dd078f",
+    "created_at": 1790000000,
+    "kind": 30078,
+    "tags": [
+      [
+        "d",
+        "nsync/v1"
+      ],
+      [
+        "expiration",
+        "1790003600"
+      ]
+    ],
+    "content": "{\"v\": 1, \"device_id\": \"P6A6JY7-GXPCC52-6V4PDPE-P5B63ZN-HIPZ3DR-VMGVSWC-I2HQH4N-BQ5YCQV\", \"addresses\": [\"tcp://192.168.1.15:22000\", \"tcp://203.0.113.7:22000\"]}",
+    "sig": "ebea1044d9b1f1711cdc3df77ee7f7e49a9514a8cce35e1884a0a9c099f3c69ad601228fdddae4b0bdad67fd02072e291a4a5390932d9d250a015f8342c738ff"
+  },
+  "relay_list_event": {
+    "id": "31bb4d90849c1d56d0d9d2f3e2705d8220dcea09742d3f2483365c6b2de2ff43",
+    "pubkey": "1b84c5567b126440995d3ed5aaba0565d71e1834604819ff9c17f5e9d5dd078f",
+    "created_at": 1790000000,
+    "kind": 10002,
+    "tags": [
+      [
+        "r",
+        "wss://relay.damus.io"
+      ],
+      [
+        "r",
+        "wss://nos.lol"
+      ]
+    ],
+    "content": "",
+    "sig": "3b9c268dbeda2cafaaedc91bcbfea759a6781700d17434373e5bf2c0a7fe193ca63354333ace712564017c150fd0eff623af16bce9ed3c78bdeb12ab98089c1c"
+  }
+}

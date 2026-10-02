@@ -1,0 +1,10 @@
+# the Android app is its own repository (a fork of Syncthing-Fork)
+nsync-android/
+archive/
+# installers are release artifacts, not source; releases/make-checksums.sh stays
+releases/*.deb
+releases/*.apk
+releases/SHA256SUMS
+.venv/
+__pycache__/
+build/

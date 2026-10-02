@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Nsync">
+  <title>Nsync</title>
+  <!-- the N of Nostr -->
+  <path d="M72 56 H168 L344 296 V56 H440 V456 H344 L168 216 V456 H72 Z" fill="#8e30eb"/>
+  <!-- the ostrich, standing in the middle, with a white edge so it reads over the N -->
+  <g stroke-linecap="round" stroke-linejoin="round" stroke="#fff" stroke-width="22">
+    <g id="ostrich">
+      <g stroke="#fff" stroke-width="34" fill="none">
+        <path d="M236 346 L230 432 L256 436"/>
+        <path d="M276 346 L288 432 L314 432"/>
+      </g>
+      <path d="M284 316 C348 284 332 220 306 176" fill="none" stroke="#fff" stroke-width="46"/>
+      <path d="M170 308 C150 276 178 248 220 256 C260 244 306 266 310 312 C312 354 262 372 220 364 C186 358 176 338 170 308 Z" fill="#fff"/>
+      <path d="M170 308 C128 296 114 264 130 248 C150 258 170 276 180 296 Z" fill="#fff" stroke="#fff" stroke-width="5"/>
+      <path d="M148 318 C112 318 96 296 100 276 C124 280 144 292 160 304 Z" fill="#fff" stroke="#fff" stroke-width="5"/>
+      <ellipse cx="316" cy="162" rx="27" ry="22" fill="#fff"/>
+      <path d="M336 156 L374 165 L336 174 Z" fill="#fff"/>
+      <circle cx="318" cy="156" r="6" fill="#fff"/><circle cx="320" cy="156" r="3" fill="#fff"/>
+    </g>
+  </g>
+<g stroke-linecap="round" stroke-linejoin="round">
+    <g id="ostrich">
+      <g stroke="#6b4f3a" stroke-width="12" fill="none">
+        <path d="M236 346 L230 432 L256 436"/>
+        <path d="M276 346 L288 432 L314 432"/>
+      </g>
+      <path d="M284 316 C348 284 332 220 306 176" fill="none" stroke="#e0a98c" stroke-width="24"/>
+      <path d="M170 308 C150 276 178 248 220 256 C260 244 306 266 310 312 C312 354 262 372 220 364 C186 358 176 338 170 308 Z" fill="#2b2437"/>
+      <path d="M170 308 C128 296 114 264 130 248 C150 258 170 276 180 296 Z" fill="#f6f1ea" stroke="#2b2437" stroke-width="5"/>
+      <path d="M148 318 C112 318 96 296 100 276 C124 280 144 292 160 304 Z" fill="#f6f1ea" stroke="#2b2437" stroke-width="5"/>
+      <ellipse cx="316" cy="162" rx="27" ry="22" fill="#e0a98c"/>
+      <path d="M336 156 L374 165 L336 174 Z" fill="#f0a83a"/>
+      <circle cx="318" cy="156" r="6" fill="#fff"/><circle cx="320" cy="156" r="3" fill="#1b1424"/>
+    </g>
+  </g>
+</svg>

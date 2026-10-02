@@ -1,0 +1,12 @@
+[Unit]
+Description=Nsync, Syncthing discovery over Nostr
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+ExecStart=/usr/bin/nsync run
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=default.target

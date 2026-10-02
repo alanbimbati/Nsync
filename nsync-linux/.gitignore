@@ -1,0 +1,13 @@
+.venv/
+__pycache__/
+*.egg-info/
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+.env
+*.jks
+*.keystore
+release.apk
+.build/
+dist/

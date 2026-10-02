@@ -1,0 +1,8 @@
+#!/bin/sh
+# Menu entry: start Nsync and open its page; if that fails, say so instead of doing nothing.
+log="${XDG_CACHE_HOME:-$HOME/.cache}/nsync-open.log"
+mkdir -p "$(dirname "$log")"
+if ! nsync open >"$log" 2>&1; then
+    command -v notify-send >/dev/null 2>&1 && notify-send "Nsync" "Could not start. Details: $log"
+    exit 1
+fi

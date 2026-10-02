@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nsync</title>
+<link rel="icon" href="/nsync/logo.svg" type="image/svg+xml">
+<style>
+  :root { --bg:#f4f6f8; --card:#fff; --fg:#1d2733; --muted:#64748b; --line:#e2e8f0; --accent:#0891d1; --ok:#2e9d57; --bad:#d64545; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#10161d; --card:#18212b; --fg:#e6edf3; --muted:#8b9bb0; --line:#26323f; } }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.5 system-ui, sans-serif; }
+  header { display:flex; align-items:center; gap:14px; padding:16px 24px; background:var(--card); border-bottom:1px solid var(--line); }
+  header img { width:44px; height:44px; }
+  header h1 { margin:0; font-size:20px; }
+  main { max-width:880px; margin:0 auto; padding:20px 16px 48px; display:grid; gap:16px; }
+  section { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:16px 20px; }
+  h2 { margin:0 0 10px; font-size:13px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); }
+  code { font:13px ui-monospace, monospace; word-break:break-all; }
+  .row { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:8px 0; border-top:1px solid var(--line); }
+  .row:first-of-type { border-top:0; }
+  .muted { color:var(--muted); font-size:13px; }
+  .dot { display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:8px; background:var(--bad); }
+  .dot.on { background:var(--ok); }
+  button { font:inherit; border:1px solid var(--accent); background:var(--accent); color:#fff; border-radius:6px; padding:6px 14px; cursor:pointer; }
+  button.ghost { background:transparent; color:var(--accent); }
+  input { font:inherit; padding:7px 10px; border:1px solid var(--line); border-radius:6px; background:var(--bg); color:var(--fg); width:100%; }
+  form { display:grid; gap:8px; margin-top:12px; }
+  #error { color:var(--bad); }
+</style>
+</head>
+<body>
+<header><img src="/nsync/logo.svg" alt=""><h1>Nsync</h1><span class="muted">Syncthing discovery over Nostr</span></header>
+<main>
+  <p id="error"></p>
+  <section>
+    <h2>This device</h2>
+    <div class="row"><span>npub</span><code id="npub"></code></div>
+    <div class="row"><span>Syncthing ID</span><code id="sid"></code></div>
+    <div class="row"><span>Announced <span class="muted" id="annAt"></span></span><code id="ann"></code></div>
+    <div class="row"><span class="muted">Pairing string, to paste on the other device</span><button class="ghost" id="copy">Copy</button></div>
+    <div id="qr" style="text-align:center;margin-top:8px;background:#fff;padding:8px;border-radius:6px"></div>
+    <p class="muted" style="text-align:center;margin:6px 0 0">Scan this with Nsync on another device</p>
+  </section>
+  <section>
+    <h2>Peers</h2>
+    <div id="peers"></div>
+    <form id="pairForm">
+      <input id="pairing" placeholder="Paste the other device's pairing string (npub…:XXXXXXX-…)" required>
+      <input id="name" placeholder="Name (optional)">
+      <button>Pair</button>
+    </form>
+  </section>
+  <section><h2>Relays</h2><div id="relays"></div></section>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+const ago = t => { if (!t) return "never"; const s = Math.max(0, Date.now()/1000 - t); return s < 90 ? "just now" : s < 5400 ? Math.round(s/60) + " min ago" : Math.round(s/3600) + " h ago"; };
+let pairingString = "";
+
+async function api(path, body) {
+  const r = await fetch("/nsync" + path, body ? { method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body) } : {});
+  const data = await r.json();
+  if (!r.ok) throw new Error(data.error || r.status);
+  return data;
+}
+
+function row(html) { const d = document.createElement("div"); d.className = "row"; d.innerHTML = html; return d; }
+const esc = s => s.replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+async function refresh() {
+  try {
+    const s = await api("/api/status");
+    $("error").textContent = "";
+    $("npub").textContent = s.npub;
+    $("sid").textContent = s.syncthing_id;
+    $("qr").innerHTML = s.qr_svg || "";
+    $("qr").querySelector("svg") && ($("qr").querySelector("svg").style.cssText = "width:220px;height:220px");
+    $("ann").textContent = s.announced.join("  ") || "nothing yet";
+    $("annAt").textContent = s.announced_at ? "(" + ago(s.announced_at) + ")" : "";
+    pairingString = s.npub + ":" + s.syncthing_id;
+    $("relays").replaceChildren(...s.relays.map(r =>
+      row(`<span><span class="dot ${r.connected ? "on" : ""}"></span>${esc(r.url)}</span><span class="muted">${r.learned ? "from a peer · " : ""}${r.connected ? "connected" : "offline"}</span>`)));
+    $("peers").replaceChildren(...(s.peers.length ? s.peers.map(p => {
+      const el = row(`<span><b>${esc(p.name || "peer")}</b><br><span class="muted">${esc(p.addresses.join("  ") || "no announcement yet")}${p.at ? " · " + ago(p.at) : ""}</span></span>`);
+      const b = document.createElement("button"); b.className = "ghost"; b.textContent = "Unpair";
+      b.onclick = async () => { try { await api("/api/unpair", {npub: p.npub}); refresh(); } catch (e) { $("error").textContent = e.message; } };
+      el.appendChild(b); return el;
+    }) : [row('<span class="muted">No peers yet</span>')]));
+  } catch (e) { $("error").textContent = e.message; }
+}
+
+$("copy").onclick = () => navigator.clipboard.writeText(pairingString);
+$("pairForm").onsubmit = async ev => {
+  ev.preventDefault();
+  try { await api("/api/pair", {pairing: $("pairing").value, name: $("name").value}); $("pairForm").reset(); refresh(); }
+  catch (e) { $("error").textContent = e.message; }
+};
+refresh(); setInterval(refresh, 5000);
+</script>
+</body>
+</html>
